@@ -1,5 +1,5 @@
-# Fethi Bougares : LIUM Lab - Le Mans
-#
+Fethi Bougares : LIUM Lab - Le Mans
+
 
 Moses decoder with lm rescoring
 
