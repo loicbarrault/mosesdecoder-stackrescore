@@ -147,7 +147,7 @@ void Hypothesis::AddArc(Hypothesis *loserHypo)
       // DO NOTHING
     }
   }
-  m_arcList->push_back(loserHypo);
+	 m_arcList->push_back(loserHypo);
 
 	//! bougares erase New Winner from arclist  
 /*	ArcList::iterator iterArc = std::find(m_arcList->begin(),m_arcList->end(), this);
@@ -422,6 +422,15 @@ const Hypothesis* Hypothesis::GetPrevHypo()const
 {
   return m_prevHypo;
 }
+//bougares
+
+void Hypothesis::SetPrevHypo(const Hypothesis* newPrev)
+{
+
+		m_prevHypo = const_cast<Hypothesis*>(newPrev);
+
+}
+
 
 /**
  * print hypothesis information for pharaoh-style logging
@@ -499,14 +508,24 @@ void Hypothesis::CleanupArcList()
     arc->SetWinningHypo(this);
   }
 
-	// bougares Rescoring : avoid to have the new winner hypothesis  into it's arcList
+	// bougares Rescoring  : remove the arc from 
 
 	 ArcList::iterator iterArc = std::find(m_arcList->begin(),m_arcList->end(), this);                                                                                                                    
   if( iterArc != m_arcList->end() ){ 
-        VERBOSE(2," RESCORING ERASE ARC IN THE SAME HYP  "<<endl); 
-        m_arcList->erase(iterArc); 
-        }
-
+        VERBOSE(2," RESCORING ERASE ARC IN THE SAME HYP  "<<endl);
+ 					// mettre celui en fin de vecteur ( the old Winner ) à la place de iterArc (the New Winner)
+						//	size_t position = iterArc - m_arcList->begin();
+        			m_arcList->insert(iterArc, m_arcList->back());	
+							m_arcList->pop_back(); //erase(iterArc);
+    iterArc = std::find(m_arcList->begin(),m_arcList->end(), this);
+		if( iterArc != m_arcList->end() ){
+							m_arcList->erase(iterArc);
+				}
+	 }
+		//for(size_t i =0; i< m_arcList->size();i++){
+			
+				
+		//}
 }
 
 TO_STRING_BODY(Hypothesis)

@@ -156,13 +156,10 @@ public:
   /****
    * For LM rescoring 
    */	
-  void  ProcessSentenceRescoring(); 
+  void 	ProcessRescore();
+  void  CSLMHypothesesScore();	
+  void  UpdateHypoTotalScore(Hypothesis* hypo);	
   float LMHypothesisrescoring(Hypothesis* hypo);
-  bool  LoadLMRescoring();
-  void  SetRescoringWeights(std::vector<float>& Weights);
-  float NewTotalScore(Hypothesis* hypo);	
-  float UpdateHypoScore(Hypothesis* hypo);	
-  float GetLMWeight();
   /***
    *For Lattice MBR
   */

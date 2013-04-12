@@ -163,6 +163,8 @@ public:
     return m_currTargetWordsRange.GetEndPos() + 1;
   }
 
+	
+
   inline const Phrase* GetSourcePhrase() const {
     return m_sourcePhrase;
   }
@@ -176,6 +178,7 @@ public:
    * (ie, start of sentence would be some negative number, which is
    * not allowed- USE WITH CAUTION) */
   inline const Word &GetCurrWord(size_t pos) const {
+		//std::cerr<<" word "<<m_targetPhrase.GetWord(pos).GetString(0)<<" ";	
     return m_targetPhrase.GetWord(pos);
   }
   inline const Factor *GetCurrFactor(size_t pos, FactorType factorType) const {
@@ -185,9 +188,11 @@ public:
   inline const Word &GetWord(size_t pos) const {
     const Hypothesis *hypo = this;
     while (pos < hypo->GetCurrTargetWordsRange().GetStartPos()) {
+			//std::cerr<<"  "<<hypo->GetId()<<" ";
       hypo = hypo->GetPrevHypo();
       CHECK(hypo != NULL);
     }
+		
     return hypo->GetCurrWord(pos - hypo->GetCurrTargetWordsRange().GetStartPos());
   }
   inline const Factor* GetFactor(size_t pos, FactorType factorType) const {
@@ -247,6 +252,17 @@ public:
   inline void InitArcList() {
 				m_arcList =NULL;
 	}
+
+ void UpdatecurrTargetWordsRange(const Hypothesis *hypo /*the new previous winner */ ) {
+								
+					size_t Currlength = hypo->GetCurrTargetLength() ; 
+					m_currTargetWordsRange.SetStartPos( hypo->GetPrevHypo()->GetCurrTargetWordsRange().GetEndPos() + 1 );
+					//std::cerr<<" START :  "<< hypo->GetPrevHypo()->GetCurrTargetWordsRange().GetEndPos() + 1 <<std::endl;
+					m_currTargetWordsRange.SetEndPos(   hypo->GetPrevHypo()->GetCurrTargetWordsRange().GetEndPos() + Currlength ); // + hypo->GetCurrTargetLength() );
+					//std::cerr<<" END   : "<< hypo->GetPrevHypo()->GetCurrTargetWordsRange().GetEndPos() + hypo->GetCurrTargetLength()<<std::endl;	
+	}
+
+
 	inline ArcList* GetNonConstArcList() {
 		    return m_arcList;
   }
@@ -260,8 +276,12 @@ public:
     return *m_scoreBreakdown;
   }
   //! bougares
-  const ScoreComponentCollection GetCurrentScoreBreakdown() const {
+ void SetScoreBreakdown( ScoreComponentCollection & resco_scoreBreakdown ) {
+   m_scoreBreakdown->CoreAssign(resco_scoreBreakdown); //reset(new ScoreComponentCollection(resco_scoreBreakdown));
 
+  }
+
+  const ScoreComponentCollection GetCurrentScoreBreakdown() const {
       return m_currScoreBreakdown;
   }
 
@@ -269,8 +289,18 @@ public:
 			return m_cslmScore;
   }
 
-  const ScoreComponentCollection& GetCurrentScoreBreakdownAddr() const {
-      return m_currScoreBreakdown;
+  ScoreComponentCollection& GetScoreBreakdownAddr() {
+		  if (!m_scoreBreakdown.get()) {
+      m_scoreBreakdown.reset(new ScoreComponentCollection(m_currScoreBreakdown));
+      if (m_prevHypo) {
+        m_scoreBreakdown->PlusEquals(m_prevHypo->GetScoreBreakdown());
+      }
+    }
+      return *m_scoreBreakdown;
+  }
+
+	ScoreComponentCollection& GetCurrScoreBreakdownAddr(){
+					return	m_currScoreBreakdown;
   }
 
 	const float GetfutureScore() const {
@@ -283,6 +313,9 @@ public:
   void SetTotalScore(float totalScore){
 		m_totalScore=totalScore;
 	}
+
+void SetPrevHypo(const Hypothesis* newPrev);
+
 //! end bougares
 
   float GetTotalScore() const {

@@ -201,7 +201,6 @@ void Manager::CalcNBest(size_t count, TrellisPathList &ret,bool onlyDistinct) co
 {
   if (count <= 0)
     return;
-	//TrellisPathCollection Nbest;
 
   const std::vector < HypothesisStack* > &hypoStackColl = m_search->GetHypothesisStacks();
   vector<const Hypothesis*> sortedPureHypo = hypoStackColl.back()->GetSortedList();
@@ -217,10 +216,11 @@ void Manager::CalcNBest(size_t count, TrellisPathList &ret,bool onlyDistinct) co
   for (iterBestHypo = sortedPureHypo.begin()
                       ; iterBestHypo != sortedPureHypo.end()
        ; ++iterBestHypo) {
-
+		VERBOSE(2," contenders : "<<i<<" Score : "<<(*iterBestHypo)->GetTotalScore()<<endl);
     contenders.Add(new TrellisPath(*iterBestHypo));
 		i++;
   }
+	// bougares verif les hypothesis scores and their arc scores ... to be done
 
 
   // factor defines stopping point for distinct n-best list if too many candidates identical
@@ -231,9 +231,12 @@ void Manager::CalcNBest(size_t count, TrellisPathList &ret,bool onlyDistinct) co
   for (size_t iteration = 0 ; (onlyDistinct ? distinctHyps.size() : ret.GetSize()) < count && contenders.GetSize() > 0 && (iteration < count * nBestFactor) ; iteration++) {
     // get next best from list of contenders
     TrellisPath *path = contenders.pop();
-    CHECK(path);
+		//VERBOSE(2," CREATE DEV FROM  this path : "<<*path<<" Score : "<<(*path).GetTotalScore()<<endl);			
+    CHECK(path); //to see 
    // create deviations from current best
     path->CreateDeviantPaths(contenders);
+		// print contenders paths
+
     if(onlyDistinct) {
       Phrase tgtPhrase = path->GetSurfacePhrase();
       if (distinctHyps.insert(tgtPhrase).second) {
@@ -243,7 +246,7 @@ void Manager::CalcNBest(size_t count, TrellisPathList &ret,bool onlyDistinct) co
         path = NULL;
       }
     } else {
-      ret.Add(path);
+      ret.Add(path); //bougares path is added to the nbest list 
     }
 
     if(onlyDistinct) {
@@ -254,6 +257,7 @@ void Manager::CalcNBest(size_t count, TrellisPathList &ret,bool onlyDistinct) co
       contenders.Prune(count);
     }
 }
+
 }
 
 struct SGNReverseCompare {
@@ -993,258 +997,285 @@ SentenceStats& Manager::GetSentenceStats() const
 
 }
 
-/*****
+/********************************** Fethi Bougares - LIUM LAB *********************************
  *
- * LM Search space Rescoring
+ * LM Search Graph Rescoring 
  *
- */
+ **********************************************************************************************/
 
-void Manager::ProcessSentenceRescoring( )
+void Manager::ProcessRescore()
 {
-	float LMCurrScore, LMScore;
-	float arc_LMSCORE, arc_LMCurrSCORE;
-	Timer rescoringTime;
-  rescoringTime.start();                                                                                                                                                                            
+		std::vector < HypothesisStack* > &hypoStackColl = const_cast<std::vector < HypothesisStack* >&>(m_search->GetHypothesisStacks());
+		std::vector < HypothesisStack* >::iterator iterStack;
+	  const vector<FactorType> &outputFactorOrder = StaticData::Instance().GetOutputFactorOrder();
+	  size_t stack_nb=1;
+	  VERBOSE(2," Parcour de l'espace de recherche à partir des Stacks j'ai "<<hypoStackColl.size()<<" Stacks "<<endl);
+		for (iterStack = ++hypoStackColl.begin() ; iterStack != hypoStackColl.end() ; ++iterStack) 
+		 {
+				VERBOSE(2," Stack nb "<<stack_nb<<endl);
+				HypothesisStack::iterator iterHypo;
+				for(iterHypo = (*iterStack)->Nocbegin() ; iterHypo != (*iterStack)->Nocend() ; ++iterHypo) 
+				     {
+										
+										VERBOSE(2,endl<<endl<<" Hypo ID "<<(*iterHypo)->GetId()<<" Prev : "<<(*iterHypo)->GetPrevHypo()->GetId()<< " Trans : "<<(*iterHypo)->GetCurrTargetPhrase().GetStringRep(outputFactorOrder)<<endl );	
+										ScoreComponentCollection &hyp_scoreBreakdown = (*iterHypo)->GetScoreBreakdownAddr(); // Get the current breakdown  *
+										std::valarray<float > tstBscore = (*iterHypo)->GetCurrentScoreBreakdown().getCoreFeatures();
+										VERBOSE(2," "<<endl);
+										VERBOSE(2," Current BreakDW Scores       : ");
+                    for(size_t i =0;i<tstBscore.size();i++)
+                                  VERBOSE(2,tstBscore[i]<<" ");
+                        VERBOSE(2,endl);
+										tstBscore = (*iterHypo)->GetScoreBreakdown().getCoreFeatures();
+										VERBOSE(2," "<<endl);
+										VERBOSE(2," Before BreakDW Scores        : ");	
+										for(size_t i =0;i<tstBscore.size();i++)
+                                  VERBOSE(2,tstBscore[i]<<" ");
+                        VERBOSE(2,endl);										
+													
+										if( (*iterHypo)->GetPrevHypo()->GetId() > 0 ){	
+										tstBscore = (*iterHypo)->GetPrevHypo()->GetScoreBreakdown().getCoreFeatures();
+										VERBOSE(2," Minus this       ( "<<(*iterHypo)->GetPrevHypo()->GetId()<<" )   : ");
+										for(size_t i =0;i<tstBscore.size();i++)
+                                  VERBOSE(2,tstBscore[i]<<" ");
+                        VERBOSE(2,endl);
+ 	
+										hyp_scoreBreakdown.MinusEquals((*iterHypo)->GetPrevHypo()->GetScoreBreakdown() ); // Minus the actual previous
+										
+										(*iterHypo)->SetPrevHypo( (*iterHypo)->GetPrevHypo()->GetWinningHypo() ); // change the previous to the winner	
+										VERBOSE(2," Plus  this       ( "<<(*iterHypo)->GetPrevHypo()->GetId()<<" )   : "); tstBscore = (*iterHypo)->GetPrevHypo()->GetScoreBreakdown().getCoreFeatures();	
+										for(size_t i =0;i<tstBscore.size();i++)
+                                  VERBOSE(2,tstBscore[i]<<" ");
+                        VERBOSE(2,endl);			
+										hyp_scoreBreakdown.PlusEquals((*iterHypo)->GetPrevHypo()->GetScoreBreakdown()); // Plus the new previous
 
- 	// Load LM
-		if( ! StaticData::Instance().Getrescorelm() )
-			{
-				UserMessage::Add("Unable to load Rescoring LM");
-				abort();
-				return;
-			}
-	
-	 std::vector < HypothesisStack* > &hypoStackColl = const_cast<std::vector < HypothesisStack* >&>(m_search->GetHypothesisStacks());
-	 const vector<FactorType> &outputFactorOrder = StaticData::Instance().GetOutputFactorOrder();	
+										(*iterHypo)->GetScoreBreakdownAddr().CoreAssign(hyp_scoreBreakdown);	// Assign the score BreakDown to this hypothesis *
+										VERBOSE(2," Result this                  : "); tstBscore = (*iterHypo)->GetScoreBreakdown().getCoreFeatures();
+										for(size_t i =0;i<tstBscore.size();i++)
+                                  VERBOSE(2,tstBscore[i]<<" ");
+                        VERBOSE(2,endl);	
+										}	
+										VERBOSE(2," CSLM SCORE :  "<< (*iterHypo)->GetCSLMScore() <<endl);
+										VERBOSE(2," Total Score :  "<<(*iterHypo)->GetTotalScore()<< " + " << (*iterHypo)->GetCSLMScore() * StaticData::Instance().GetLMRescoringWeight()<< " =  " );
+										UpdateHypoTotalScore(*iterHypo);
+										VERBOSE(2,(*iterHypo)->GetTotalScore()<<endl);												
+										const ArcList *pAL = (*iterHypo)->GetArcList();
+										Hypothesis* NewHypoWinner = *iterHypo;
+										if(pAL)
+													{
+															VERBOSE(2,endl<<" ------------------ recombine BEGIN ----------------- "<<endl);
+                              ArcList::const_iterator iterArc;	
+															for (iterArc = pAL->begin() ; iterArc != pAL->end() ; ++iterArc)
+																	{
+																				Hypothesis *arc = const_cast<Hypothesis*>(*iterArc);
+																				VERBOSE(2,"\t Arc ID "<< arc->GetId()<<" Prev : "<<arc->GetPrevHypo()->GetId()<<" Trans : "<<arc->GetCurrTargetPhrase().GetStringRep(outputFactorOrder)<<endl);
+																				ScoreComponentCollection &arc_scoreBreakdown = arc->GetScoreBreakdownAddr();// arc breakdown *
 
+																				std::valarray<float > arcBscore = arc->GetScoreBreakdown().getCoreFeatures();
+																				VERBOSE(2,"\t ARC Before BreakDW Scores      : ");
+																				for(size_t i =0;i<arcBscore.size();i++)
+                                  							VERBOSE(2,arcBscore[i]<<" ");
+                        								VERBOSE(2,endl);
+																																									
+																				if( arc->GetPrevHypo()->GetId() > 0 ){ 	
+																				arcBscore = arc->GetPrevHypo()->GetScoreBreakdown().getCoreFeatures();
+																				VERBOSE(2,"\t Minus this   ( "<< arc->GetPrevHypo()->GetId()<<" )        : ");
+																				for(size_t i =0;i<arcBscore.size();i++)                                                                                                                           
+                                                VERBOSE(2,arcBscore[i]<<" ");                                                                                                                             
+                                        VERBOSE(2,endl);
 
-			VERBOSE(2," Parcour de l'espace de recherche à partir des Stacks  Stack size: "<<hypoStackColl.size()<<" Stacks "<<endl);
-      int stackno = 1;
-      std::vector < HypothesisStack* >::iterator iterStack;
-      for (iterStack = ++hypoStackColl.begin() ; iterStack != hypoStackColl.end() ; ++iterStack) { // go through each stack  
-              HypothesisStack *stack = *iterStack;
-              HypothesisStack::iterator iterHypo;
-							
-             for(iterHypo = (*iterStack)->Nocbegin() ; iterHypo != (*iterStack)->Nocend() ; ++iterHypo) { // go through each Hypothesis
-								VERBOSE(2,"Hypothesis  ID "<<(*iterHypo)->GetId()<<" ("
-                                             <<(*iterHypo)->GetPrevHypo()->GetId()<<") Translation : "
-                                             <<(*iterHypo)->GetCurrTargetPhrase().GetStringRep(outputFactorOrder));
-
-												LMCurrScore=LMHypothesisrescoring(*iterHypo); // Compute LM score with the BIG LM
-												VERBOSE(2," Hyp CSLM Curr: "<<LMCurrScore<<endl);	
-												if((*iterHypo)->GetPrevHypo())
-															LMScore = LMCurrScore + (*iterHypo)->GetPrevHypo()->GetCSLMScore(); // Cumulative BIG LM score;
-
-												VERBOSE(2," Hyp CSLM Cumul: "<<LMScore<<endl);
-												(*iterHypo)->SetCSLMScore(LMScore); // Set the CSLM Cumulative Score
-												
-												(*iterHypo)->SetTotalScore( NewTotalScore(*iterHypo) + ( LMCurrScore * StaticData::Instance().GetLMRescoringWeight())); // Set the New m_totalScore (add the weighted BIGLM score )
-								        
-												const ArcList *pAL = (*iterHypo)->GetArcList(); // arcList of actual hypothesis
-												
-												if(pAL){ // Yes for this hypo  (aka there was a recombined hypotheses)
- 																Hypothesis* NewWinner = *iterHypo; // to hold the winner hypothesis 
-                        				const ArcList &arcList = *pAL;
-                        				ArcList::const_iterator iterArc;
-												 
-                        				for (iterArc = arcList.begin() ; iterArc != arcList.end() ; ++iterArc) { // go through each Arc
-																 
-                                 			Hypothesis *arc = const_cast<Hypothesis*>(*iterArc);
-																			arc_LMCurrSCORE = LMHypothesisrescoring(arc);
-                                  		VERBOSE(2," ARC CSLM Curr: "<<arc_LMCurrSCORE<<endl);
-																 		  if( arc->GetPrevHypo() )
-                                   		 			arc_LMSCORE = arc_LMCurrSCORE + arc->GetPrevHypo()->GetCSLMScore();
-
-																			VERBOSE(2," ARC CSLM Cumul: "<<arc_LMSCORE<<endl);
-																 			arc->SetCSLMScore(arc_LMSCORE); // Set the CSLM for this arc
-																 			arc->SetTotalScore(NewTotalScore(arc) + (arc_LMCurrSCORE * StaticData::Instance().GetLMRescoringWeight())); // Set the arc New m_totalScore (add the weighted BIGLM score )
-																			VERBOSE(2," ARC TOTAL SCORE "<<arc->GetTotalScore()<<endl);
-
-																	if(arc->GetTotalScore() > NewWinner->GetTotalScore() ){
-																								NewWinner = arc; // We Have a New Winning Hypo	
-																								VERBOSE(2," New Winner : "<<NewWinner->GetId()<<endl);
-																			}
+																				arc_scoreBreakdown.MinusEquals(arc->GetPrevHypo()->GetScoreBreakdown() ); //GetCurrentScoreBreakdown() ); // minus the actual previous
+																				arc->SetPrevHypo( arc->GetPrevHypo()->GetWinningHypo() ); // change the previous to the winner 
+																				arcBscore = arc->GetPrevHypo()->GetScoreBreakdown().getCoreFeatures();
+																				VERBOSE(2,"\t Plus  this   ( "<< arc->GetPrevHypo()->GetId()<<" )        : ");
+																				for(size_t i =0;i<arcBscore.size();i++)                                                                                                                           
+                                                VERBOSE(2,arcBscore[i]<<" ");                                                                                                                             
+                                        VERBOSE(2,endl);
+																				arc_scoreBreakdown.PlusEquals( arc->GetPrevHypo()->GetScoreBreakdown());// GetCurrentScoreBreakdown());//GetScoreBreakdown()); //Add the new previous
+																				
+																				arc->GetScoreBreakdownAddr().CoreAssign(arc_scoreBreakdown); // Assign the score BreakDown to this arc *
+																			 	
+																				arcBscore = arc->GetScoreBreakdown().getCoreFeatures();			
+																				VERBOSE(2,"\t ARC After ADD BDW Scores       : ");
+                                        for(size_t i =0;i<arcBscore.size();i++)
+                                                VERBOSE(2,arcBscore[i]<<" ");
+                                        VERBOSE(2,endl);
+			      														}
+																				
+																				VERBOSE(2,"\t CSLM SCORE  :  "<< arc->GetCSLMScore()<<endl);
+																				VERBOSE(2,"\t Total Score :  "<< arc->GetTotalScore()<< " + " << arc->GetCSLMScore() * StaticData::Instance().GetLMRescoringWeight()<< " =  " );	
+																				UpdateHypoTotalScore(arc); // update arc Score (aka add cslm weighted score )																				
+																				VERBOSE(2,arc->GetTotalScore()<<endl<<endl);
+																				if(arc->GetTotalScore() > NewHypoWinner->GetTotalScore() )
+																						 NewHypoWinner = arc;					
+							 										}
+															VERBOSE(2,endl<<" ------------------ recombine END ----------------- "<<endl<<endl);	
 														}
-												if(  (*iterHypo)->GetId() != NewWinner->GetId() ){ // If there is new Winner ---> switch hypotheis 
-																		const ArcList *pAL = (*iterHypo)->GetArcList();// ArcList of old Winner 
-																		const ArcList &arcListTst = *pAL;  ArcList::const_iterator iterArcTst;	
- 																		//  debug 
-																		VERBOSE(2," Old   Winner     : "<<(*iterHypo)->GetId()<<" Score :"<<(*iterHypo)->GetTotalScore()<<" Arc List :"<<endl);																				 	
-																		for(iterArcTst=arcListTst.begin();iterArcTst != arcListTst.end();++iterArcTst){
-                                                    VERBOSE(2," "<<(*iterArcTst)->GetId());
-                                    }
-                                        VERBOSE(2," End old Winner "<<endl);
-
-																		
-																		NewWinner->AddArc(*iterHypo); // Add arcs of loser hypothesis to Newwinner Hypo
-																	  NewWinner->CleanupArcList();  // Clean arcList of NewWinner and delete duplicated arcs 
-																		(*iterStack)->RescoreAddPrune(NewWinner,*iterHypo);
-
-																		const ArcList *pALWin = NewWinner->GetArcList();
-																		const ArcList &arcListTst1 = *pALWin;
-																		//debug
-																		VERBOSE(2," Final New Winner : "<<NewWinner->GetId()<<"   Score :"<<NewWinner->GetTotalScore()<<" Arc List :"<<endl);
-																		for(iterArcTst=arcListTst.begin();iterArcTst != arcListTst.end();++iterArcTst){
-																										VERBOSE(2," "<<(*iterArcTst)->GetId());
-																		}
-																				VERBOSE(2," End NewWinner "<<endl);
-																}
-                        
-                      } //  End IF Has Arc
-										} // End Hypo into stack i
-									
-									stackno++; 
-							} // End of all Stacks
-
+										if( (*iterHypo)->GetId() != NewHypoWinner->GetId()  )
+											{
+														VERBOSE(2," Winning change : from "<< (*iterHypo)->GetId() <<" To "<<NewHypoWinner->GetId()<<endl );
+														NewHypoWinner->AddArc(*iterHypo);
+														NewHypoWinner->CleanupArcList();
+														(*iterStack)->RescoreAddPrune(NewHypoWinner,*iterHypo);
+											}
+						}
+			VERBOSE(2," "<<endl);	
+			stack_nb++;
+			}
 }
 
-/**
- * Add cslm score*cslm-weight to the totalScore of each hypothesis (to be tested 1/2(lm score) + 1/2 (cslm score))
- *
- */
-
-float Manager::GetLMWeight()
-{
-			// Use the LM weight as CSLM weight
-			//
-							float lmw=0.0;
-
-              LMList::const_iterator lmIter;                                                                                                                                                                     
-              const LMList &lmList = m_system->GetLanguageModels();                                                                                                                                              
-	
-              for (lmIter = lmList.begin(); lmIter != lmList.end(); ++lmIter) {                                                                                                                                  
-                      const LanguageModel &lm = **lmIter;                                                                                                                                                        
-                      lmw = lm.GetWeight();  
-              }
-
-
-			return(lmw);
-}
-
-
-
-/*
-* Recalculate the Total Score of hypothesis
-*/
-
-float Manager::NewTotalScore( Hypothesis* hypo )
-{
-						// 1- Get The Weights 	
-						// 3- Calculate the Sum of product 
-						// 4- Return The Total score
-
-						std::vector<float> Weights;
-						SetRescoringWeights(Weights);
-						std::valarray<float > Scores = hypo->GetCurrentScoreBreakdown().getCoreFeatures();		
-						float TotalScore=0.0f;
-
-							// InnerProduct
-						for(size_t i=0;i<Scores.size();i++) 
-									TotalScore += Scores[i]*Weights[i];                                                                                                             
-						
-						TotalScore += hypo->GetfutureScore();	
-
-					if(hypo->GetPrevHypo())
-							TotalScore += hypo->GetPrevHypo()->GetTotalScore() - hypo->GetPrevHypo()->GetfutureScore();//aka (m_prevHypo->m_totalScore - m_prevHypo->m_futureScore )
-						
-						
-					return TotalScore;
-}
 /***
- * Expand the hypoStackColl (the recombined hypothesis) 
- *
+ * 
+ *  Calculate the new LM score for each hypothesis and its arcs 
+ */
+
+void Manager::CSLMHypothesesScore()
+{
+	  float LMCurrScore ;
+  	float arc_LMCurrScore;
+
+		std::vector < HypothesisStack* > &hypoStackColl = const_cast<std::vector < HypothesisStack* >&>(m_search->GetHypothesisStacks());
+
+		  int stackno = 0;
+      std::vector < HypothesisStack* >::iterator iterStack;
+      
+      for (iterStack = ++hypoStackColl.begin() ; iterStack != hypoStackColl.end() ; ++iterStack)
+					{ // Foreach Stack in the search Space
+								HypothesisStack::iterator iterHypo;
+								for(iterHypo = (*iterStack)->Nocbegin() ; iterHypo != (*iterStack)->Nocend() ; ++iterHypo) 
+									{ // Foreach Hypo in actual Stack
+																LMCurrScore= LMHypothesisrescoring(*iterHypo);
+																if( (*iterHypo)->GetPrevHypo() )
+                                       (*iterHypo)->SetCSLMScore(LMCurrScore + (*iterHypo)->GetPrevHypo()->GetCSLMScore() );
+                                   else
+                                       (*iterHypo)->SetCSLMScore(LMCurrScore);			
+																				
+										  const ArcList *pAL =   (*iterHypo)->GetArcList();
+											if(pAL){ // If Arcs 
+															ArcList::const_iterator iterArc;			
+
+															for (iterArc = pAL->begin() ; iterArc != pAL->end() ; ++iterArc) 
+																  {
+																	   Hypothesis *arc = const_cast<Hypothesis*>(*iterArc);		
+																	   arc_LMCurrScore = LMHypothesisrescoring(arc);						
+																	   if( arc->GetPrevHypo() && (arc->GetPrevHypo()->GetId() != 0) )                                                                                                   
+                                         arc->SetCSLMScore(arc_LMCurrScore + arc->GetPrevHypo()->GetCSLMScore() );                                                                                     
+                                     else                                                                                                                                                            
+                                         arc->SetCSLMScore(arc_LMCurrScore);
+																  }
+														} // End If Arcs
+									}// End Hypothesis of this Stack
+					} // End All Stacks
+}
+
+/**
+ *  Update the totalScore of each hypothesis
  *
  */
 
+void Manager::UpdateHypoTotalScore( Hypothesis* hypo )
+{
 
+			 float 	TotalScore = hypo->GetScoreBreakdown().InnerProduct(StaticData::Instance().GetAllWeights());
+				      /* TotalScore += hypo->GetfutureScore();
+							
+							if(hypo->GetPrevHypo())
+										TotalScore += hypo->GetPrevHypo()->GetTotalScore() - hypo->GetPrevHypo()->GetfutureScore();
+									*/
+							TotalScore += hypo->GetCSLMScore() * StaticData::Instance().GetLMRescoringWeight(); // BIG/CSLM weighted Score
+
+			 hypo->SetTotalScore(TotalScore);//hypo->GetTotalScore() + (hypo->GetCSLMScore() * StaticData::Instance().GetLMRescoringWeight()) );
+}
 
 
 /**
-* Calculate the New LM score 	
+* Calculate the SRILM score 	
 *
 **/
 
 float Manager::LMHypothesisrescoring(Hypothesis* hypo)
 {
 
-			//cerr<<" Create Contexte for  Hypotheis "<<hypo->GetId()<<endl;
+			//std::cerr<<" Create Contexte for  Hypotheis "<<hypo->GetId()<<endl;
 			if(StaticData::Instance().GetLMRrescoringOrder() <= 1 )
-							return -1;
+							return 0;
 			if (hypo->GetCurrTargetLength() == 0)
-							return -1;
-					
+							return 0;
+		
+			/*FactorCollection &collection = FactorCollection::Instance();
+			  const Factor * beginSentence, endSentence;
+			
+			  beginSentence = collection.AddFactor(BOS_);
+			  endSentence		= collection.AddFactor(EOS_); */
+
 		  float lmScore=0;
 
 		 size_t index=0;
-		 vector<std::string> contextFactor(StaticData::Instance().GetLMRrescoringOrder());
+		//	VERBOSE(2,"into LM score calc 1"<<endl);
+		 vector<string> contextFactor(StaticData::Instance().GetLMRrescoringOrder());
+//			vector<const Word*> contextFactor( StaticData::Instance().GetLMRrescoringOrder() );
+		//	VERBOSE(2,"into LM score calc 2"<<endl);
 						
 		//first NGram
 		const size_t currEndPos = hypo->GetCurrTargetWordsRange().GetEndPos();
 		const size_t startPos   = hypo->GetCurrTargetWordsRange().GetStartPos();
-
+		
+			//		VERBOSE(2," Start "<<startPos<<" From "<< (int)startPos-(int) StaticData::Instance().GetLMRrescoringOrder() + 1<<" To "<<startPos<<endl);
+			//		VERBOSE(2," End   "<<currEndPos<<endl);
+			
 		for (int currPos = (int) startPos - (int) StaticData::Instance().GetLMRrescoringOrder() + 1 ; currPos <= (int) startPos ; currPos++) {
-								if (currPos >= 0)
-									contextFactor[index++] = hypo->GetWord(currPos).GetString(0);
+								//VERBOSE(2," "<<currPos<<" ");
+								if (currPos >= 0 ){
+												// controle
+												if(hypo->GetWord(currPos).GetString(0).empty() ){
+																	cerr<<" Line number "<<m_lineNumber<<endl;
+																	cerr<<" This return empty string  !!! "<<endl;
+																	cerr<<" Start "<<startPos<<" End "<<currEndPos<<endl;
+																	cerr<<" Curr Pos "<<currPos<<endl;
+																	
+													}else{
+															contextFactor[index++] = hypo->GetWord(currPos).GetString(0);
+															}
+								}
 								else {
-									contextFactor[index++] = BOS_;
+									contextFactor[index++] =  BOS_;
 									} 
 				}
-		VERBOSE(2,"First n-gram : ");
+
+		/*	VERBOSE(2,endl<<"First n-gram : "<<endl);
 		for(size_t c=0;c<contextFactor.size();c++){ 
 					VERBOSE(2,contextFactor[c]<<" "); 
-				}
-				  VERBOSE(2,endl);	
+				}*/
+				//  VERBOSE(2,endl);	
 			lmScore = StaticData::Instance().Getrescorelm()->GetValueBF(contextFactor,false).score;
+			
+			// VERBOSE(2,"End first"<<endl);
 
+//	  size_t endPos = std::min(startPos + StaticData::Instance().GetLMRrescoringOrder() - 2 
+//                             , currEndPos);
+		
 	  for (size_t currPos = startPos + 1 ; currPos <= currEndPos ; currPos++) {
 							contextFactor.erase(contextFactor.begin()); 
 							contextFactor.push_back(hypo->GetWord(currPos).GetString(0));
-							for(size_t c=0;c<contextFactor.size();c++)                                                                                        
-									VERBOSE(2,contextFactor[c]<<" ");                                                                                               
-											VERBOSE(2,endl);		
+						//	for(size_t c=0;c<contextFactor.size();c++) 
+						//			VERBOSE(2,contextFactor[c]<<" "); 
+						//					VERBOSE(2,endl);
 					lmScore += StaticData::Instance().Getrescorelm()->GetValueBF(contextFactor,false).score;
 			}                                                                                                                                                    
 
 		if(hypo->IsSourceCompleted() ){ 
 			contextFactor.erase(contextFactor.begin()); 
 			contextFactor.push_back(EOS_);
-    for(size_t c=0;c<contextFactor.size();c++) 
+/*    for(size_t c=0;c<contextFactor.size();c++) 
 							VERBOSE(2,contextFactor[c]<<" "); 				
-					VERBOSE(2,endl);
-				lmScore += StaticData::Instance().Getrescorelm()->GetValueBF(contextFactor,false).score; // a modifiead version of srilm GetValue using string without factor 
+					VERBOSE(2,endl); */
+				lmScore += StaticData::Instance().Getrescorelm()->GetValueBF(contextFactor,false).score; 
 			}
-
+			
+		//VERBOSE(2," End LM score "<<endl);
 		return lmScore;  
 
 }
 
-/**
-* Get weights
-* 
-**/
-
-void Manager::SetRescoringWeights( std::vector<float> & Weights ) 
-{
-
-							Weights.push_back( StaticData::Instance().GetWeight((const Moses::ScoreProducer*) m_system->GetDistortionProducer()        ) );
-							Weights.push_back( StaticData::Instance().GetWeight((const Moses::ScoreProducer*) m_system->GetWordPenaltyProducer()       ) );
-							Weights.push_back( StaticData::Instance().GetWeight((const Moses::ScoreProducer*) m_system->GetUnknownWordPenaltyProducer()) );
-
-							std::vector<float> tmpWeightR = StaticData::Instance().GetWeights( (const Moses::ScoreProducer*) m_system->GetReorderModels()[0] ); 
-							Weights.insert(Weights.end(),tmpWeightR.begin(),tmpWeightR.end());
-						
-							LMList::const_iterator lmIter;
-							const LMList &lmList = m_system->GetLanguageModels();
-
-  						for (lmIter = lmList.begin(); lmIter != lmList.end(); ++lmIter) {
-    									const LanguageModel &lm = **lmIter;	
-											Weights.push_back(lm.GetWeight());
-							}
-							
-							std::vector<float> tmpWeightPT = StaticData::Instance().GetWeights( (const Moses::ScoreProducer*) m_system->GetPhraseDictionaries()[0] );
-							Weights.insert(Weights.end(),tmpWeightPT.begin(),tmpWeightPT.end());
-}
-
-
+/*****************************************/
 
 }

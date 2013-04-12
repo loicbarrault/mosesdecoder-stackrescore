@@ -118,8 +118,9 @@ public:
 
     // Rescore the Search Graph with LM (update hypothesis scores with the rescoring LM)	
     if(staticData.UseLMRescoring() ){
-	VERBOSE(2," TIME TO RESCORE "<<endl);
-	manager.ProcessSentenceRescoring();
+	VERBOSE(2," Search Space Rescoring "<<endl);
+	manager.CSLMHypothesesScore(); // Calculate the BIG LM score for each hypothesis
+	manager.ProcessRescore(); // Update hypothesis Score and link
     }
     // output word graph
     if (m_wordGraphCollector) {
@@ -366,8 +367,8 @@ static void ShowWeights()
     PrintFeatureWeight(gds[i]);
   }
 
- //  if(staticData.UseLMRescoring() )	
-   	//cout<<"CSLM cslm "<<staticData.GetLMRescoringWeight()<<endl;
+  if(staticData.UseLMRescoring() )	
+   	cout<<"CSLM cslm "<<staticData.GetLMRescoringWeight()<<endl;
 
 }
 

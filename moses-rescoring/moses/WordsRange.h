@@ -51,9 +51,18 @@ public:
   inline size_t GetStartPos() const {
     return m_startPos;
   }
+  inline void SetStartPos(size_t startPos) {
+	m_startPos = startPos;
+  }
+
+
   inline size_t GetEndPos() const {
     return m_endPos;
   }
+
+  inline void SetEndPos( size_t endPos){
+	m_endPos = endPos;
+  } 	
 
   //! count of words translated
   inline size_t GetNumWordsCovered() const {
