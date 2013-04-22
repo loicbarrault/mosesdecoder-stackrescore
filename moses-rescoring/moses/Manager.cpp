@@ -1019,7 +1019,6 @@ void Manager::ProcessRescore()
 										
 										VERBOSE(2,endl<<endl<<" Hypo ID "<<(*iterHypo)->GetId()<<" Prev : "<<(*iterHypo)->GetPrevHypo()->GetId()<< " Trans : "<<(*iterHypo)->GetCurrTargetPhrase().GetStringRep(outputFactorOrder)<<endl );	
 										ScoreComponentCollection &hyp_scoreBreakdown     = (*iterHypo)->GetScoreBreakdownAddr();      // Get Hypothesis breakdown  *
-										ScoreComponentCollection &hyp_CurrscoreBreakdown = (*iterHypo)->GetCurrScoreBreakdownAddr(); // Get the Hypo CurrScoreBreakdown
 										std::valarray<float > tstBscore = (*iterHypo)->GetCurrentScoreBreakdown().getCoreFeatures();
 										VERBOSE(2," "<<endl);
 										VERBOSE(2," Current BreakDW Scores       : ");
@@ -1041,7 +1040,6 @@ void Manager::ProcessRescore()
                         VERBOSE(2,endl);
  	
 										hyp_scoreBreakdown.MinusEquals((*iterHypo)->GetPrevHypo()->GetScoreBreakdown() );          		// minus the actual previous BreakDown
-										hyp_CurrscoreBreakdown.MinusEquals((*iterHypo)->GetPrevHypo()->GetCurrentScoreBreakdown() ); //  minus the actual previous CurrentBreakDown
 										
 										(*iterHypo)->SetPrevHypo( (*iterHypo)->GetPrevHypo()->GetWinningHypo() ); // change the previous to the winner	
 										VERBOSE(2," Plus  this       ( "<<(*iterHypo)->GetPrevHypo()->GetId()<<" )   : "); tstBscore = (*iterHypo)->GetPrevHypo()->GetScoreBreakdown().getCoreFeatures();	
@@ -1049,10 +1047,8 @@ void Manager::ProcessRescore()
                                   VERBOSE(2,tstBscore[i]<<" ");
                         VERBOSE(2,endl);			
 										hyp_scoreBreakdown.PlusEquals((*iterHypo)->GetPrevHypo()->GetScoreBreakdown());               // Add the new previous Breakdown
-										hyp_CurrscoreBreakdown.PlusEquals((*iterHypo)->GetPrevHypo()->GetCurrentScoreBreakdown() ); //  Add the new previous current breakdown
 
-						// //				(*iterHypo)->GetScoreBreakdownAddr().CoreAssign(hyp_scoreBreakdown);						// Assign the score BreakDown to this hypothesis *
-										(*iterHypo)->GetCurrScoreBreakdownAddr().CoreAssign(hyp_CurrscoreBreakdown);
+										(*iterHypo)->GetScoreBreakdownAddr().CoreAssign(hyp_scoreBreakdown);						// Assign the score BreakDown to this hypothesis *
 										VERBOSE(2," Result this                  : "); tstBscore = (*iterHypo)->GetScoreBreakdown().getCoreFeatures();
 										for(size_t i =0;i<tstBscore.size();i++)
                                   VERBOSE(2,tstBscore[i]<<" ");
@@ -1073,7 +1069,6 @@ void Manager::ProcessRescore()
 																				Hypothesis *arc = const_cast<Hypothesis*>(*iterArc);
 																				VERBOSE(2,"\t Arc ID "<< arc->GetId()<<" Prev : "<<arc->GetPrevHypo()->GetId()<<" Trans : "<<arc->GetCurrTargetPhrase().GetStringRep(outputFactorOrder)<<endl);
 																				ScoreComponentCollection &arc_scoreBreakdown = arc->GetScoreBreakdownAddr();//GetCurrScoreBreakdownAddr();// arc breakdown *
-																				ScoreComponentCollection &arc_CurrscoreBreakdown = arc->GetCurrScoreBreakdownAddr();
 																				std::valarray<float > arcBscore = arc->GetScoreBreakdown().getCoreFeatures();
 																				VERBOSE(2,"\t ARC Before BreakDW Scores      : ");
 																				for(size_t i =0;i<arcBscore.size();i++)
@@ -1088,7 +1083,6 @@ void Manager::ProcessRescore()
                                         VERBOSE(2,endl);
 
 																				arc_scoreBreakdown.MinusEquals(arc->GetPrevHypo()->GetScoreBreakdown() ); //GetCurrentScoreBreakdown() ); // minus the actual previous
-																				arc_CurrscoreBreakdown.MinusEquals(arc->GetPrevHypo()->GetCurrentScoreBreakdown() );
 																				arc->SetPrevHypo( arc->GetPrevHypo()->GetWinningHypo() ); // change the previous to the winner 
 																				arcBscore = arc->GetPrevHypo()->GetScoreBreakdown().getCoreFeatures();
 																				VERBOSE(2,"\t Plus  this   ( "<< arc->GetPrevHypo()->GetId()<<" )        : ");
@@ -1096,9 +1090,7 @@ void Manager::ProcessRescore()
                                                 VERBOSE(2,arcBscore[i]<<" ");                                                                                                                             
                                         VERBOSE(2,endl);
 																				arc_scoreBreakdown.PlusEquals( arc->GetPrevHypo()->GetScoreBreakdown());// GetCurrentScoreBreakdown());//GetScoreBreakdown()); //Add the new previous
-																				arc_CurrscoreBreakdown.PlusEquals(arc->GetPrevHypo()->GetCurrentScoreBreakdown() );
-																// //				arc->GetScoreBreakdownAddr().CoreAssign(arc_scoreBreakdown); // Assign the score BreakDown to this arc *
-																			 	arc->GetCurrScoreBreakdownAddr().CoreAssign(arc_CurrscoreBreakdown);
+																				arc->GetScoreBreakdownAddr().CoreAssign(arc_scoreBreakdown); // Assign the score BreakDown to this arc *
 																				arcBscore = arc->GetScoreBreakdown().getCoreFeatures();			
 																				VERBOSE(2,"\t ARC After ADD BDW Scores       : ");
                                         for(size_t i =0;i<arcBscore.size();i++)
