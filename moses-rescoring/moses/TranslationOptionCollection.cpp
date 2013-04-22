@@ -403,7 +403,7 @@ void TranslationOptionCollection::CreateTranslationOptions()
     }
   }
 
-  VERBOSE(2,"Translation Option Collection\n " << *this << endl);
+  VERBOSE(3,"Translation Option Collection\n " << *this << endl);
 
   // Incorporate distributed lm scores.
   IncorporateDLMScores();

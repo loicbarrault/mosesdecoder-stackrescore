@@ -163,7 +163,7 @@ public:
 
 	size_t GetNumberWeights(const ScoreProducer* sp);
 
-	void CoreAssign(const ScoreComponentCollection& rhs)
+	void CoreAssign(/*const*/ ScoreComponentCollection& rhs)
         {
 	  m_scores.coreAssign(rhs.m_scores);
 	}

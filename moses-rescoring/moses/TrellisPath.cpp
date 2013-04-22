@@ -58,7 +58,7 @@ void TrellisPath::InitScore() {
 //	std::cerr<<" winning hypo : total score "<<winningHypo->GetTotalScore()<<" winning :  " <<winningHypo->GetScoreBreakdown()<<endl;
 //	std::cerr<<" Update Score : total score "<<m_totalScore<<" new score : " <<m_scoreBreakdown<<endl<<endl;
 //  	std::cerr<<" m_LMrescoring "<<m_LMrescoring<<" hypo cslm : "<<hypo->GetCSLMScore()<<" winning cslm  "<<winningHypo->GetCSLMScore()<<endl;    
-        m_LMrescoring =  m_LMrescoring - winningHypo->GetCSLMScore() +  hypo->GetCSLMScore(); // + hypo->GetCSLMScore();
+      m_LMrescoring = m_LMrescoring - winningHypo->GetCSLMScore() + hypo->GetCSLMScore();
 	}
   }
 	
@@ -104,20 +104,21 @@ void TrellisPath::CreateDeviantPaths(TrellisPathCollection &pathColl) const
 
   if (m_prevEdgeChanged == NOT_FOUND) {
     // initial enumration from a pure hypo
-    VERBOSE(2,"Parcours de Path  hypo par hypo"<<endl);
+    //VERBOSE(2,"Parcours de Path  hypo par hypo"<<endl);
     for (size_t currEdge = 0 ; currEdge < sizePath ; currEdge++) {
-      const Hypothesis	*hypo		= static_cast<const Hypothesis*>(m_path[currEdge]);
+      const Hypothesis	*hypo	= static_cast<const Hypothesis*>(m_path[currEdge]);
       const ArcList *pAL = hypo->GetArcList();
       if (!pAL) continue;
       const ArcList &arcList = *pAL;
-	VERBOSE(2, "  Create from hypo recombined with :  "<< hypo->GetId() <<endl);	
+	// VERBOSE(2, "  Create from hypo recombined with :  "<< hypo->GetId()<<" ARC size "<<arcList.size()<<endl);	
       // every possible Arc to replace this edge
       ArcList::const_iterator iterArc;
       for (iterArc = arcList.begin() ; iterArc != arcList.end() ; ++iterArc) {
         const Hypothesis *arc = *iterArc;
+		
         TrellisPath *deviantPath = new TrellisPath(*this, currEdge, arc);
 
-	//VERBOSE(2," Add deviantPath  : "<<*deviantPath<<endl);
+ 	 //  VERBOSE(2," Add deviantPath to contenders : "<<*deviantPath<<" Score : "<<(*deviantPath).GetTotalScore()<<endl);
 
         pathColl.Add(deviantPath);
       }
@@ -129,14 +130,14 @@ void TrellisPath::CreateDeviantPaths(TrellisPathCollection &pathColl) const
       if (!pAL) continue;
       const ArcList &arcList = *pAL;
       ArcList::const_iterator iterArc;
-      VERBOSE(2, " wiggle Create from hypo recombined with :  "<< m_path[currEdge]->GetId() <<endl);		
+      // VERBOSE(2, " wiggle Create from hypo recombined with :  "<< m_path[currEdge]->GetId() <<endl);		
       for (iterArc = arcList.begin() ; iterArc != arcList.end() ; ++iterArc) {
         // copy this Path & change 1 edge
         const Hypothesis *arcReplace = *iterArc;
 
         TrellisPath *deviantPath = new TrellisPath(*this, currEdge, arcReplace);
 	
-	//VERBOSE(2," Add deviantPath 1 : "<<*deviantPath<<endl);
+	// VERBOSE(2," Add deviantPath 1 : "<<*deviantPath<<" Score : "<<(*deviantPath).GetTotalScore()<<endl);
 
         pathColl.Add(deviantPath);
       } // for (iterArc...

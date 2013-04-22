@@ -57,6 +57,7 @@ public:
     return top;
   }
 
+
   ~TrellisPathCollection() {
     // clean up
     RemoveAllInColl(m_collection);
