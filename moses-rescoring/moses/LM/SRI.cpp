@@ -60,7 +60,7 @@ bool LanguageModelSRI::Load(const std::string &filePath
   m_nGramOrder	= nGramOrder;
   m_filePath		= filePath;
 
-  m_srilmModel->skipOOVs() = false;
+  //m_srilmModel->skipOOVs() = false;
 
   File file( filePath.c_str(), "r" );
   m_srilmModel->read(file);

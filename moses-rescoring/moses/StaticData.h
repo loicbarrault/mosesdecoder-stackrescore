@@ -502,6 +502,7 @@ public:
     return m_nBestFactor;
   }
   bool GetOutputWordGraph() const {
+	std::cerr << "m_outputWordGraph=" << m_outputWordGraph << std::endl;
     return m_outputWordGraph;
   }
 
