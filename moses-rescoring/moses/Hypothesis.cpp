@@ -609,7 +609,7 @@ std::string Hypothesis::GetTargetPhraseStringRep() const
 void Hypothesis::GetLastWords(int numWords, Phrase &out) const
 {
   int thisSize = m_targetPhrase.GetSize();
-  for (int pos = thisSize; pos >= 0; --pos) {
+  for (int pos = thisSize - 1; pos >= 0; --pos) {
 	const Word &word = m_targetPhrase.GetWord(pos);
 	out.PrependWord(word);
 
