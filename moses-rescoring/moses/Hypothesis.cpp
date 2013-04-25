@@ -244,6 +244,17 @@ int Hypothesis::RecombineCompare(const Hypothesis &compare) const
   // -1 = this < compare
   // +1 = this > compare
   // 0	= this ==compare
+
+  int numWords = 3;
+  Phrase a(numWords), b(numWords);
+  GetLastWords(numWords, a);
+  compare.GetLastWords(numWords, b);
+  int ret = a.Compare(b);
+  if (ret) {
+	  return ret;
+  }
+
+
   int comp = m_sourceCompleted.Compare(compare.m_sourceCompleted);
   if (comp != 0)
     return comp;
@@ -593,6 +604,24 @@ std::string Hypothesis::GetTargetPhraseStringRep() const
     allFactors.push_back(i);
   }
   return GetTargetPhraseStringRep(allFactors);
+}
+
+void Hypothesis::GetLastWords(int numWords, Phrase &out) const
+{
+  int thisSize = m_targetPhrase.GetSize();
+  for (int pos = thisSize; pos >= 0; --pos) {
+	const Word &word = m_targetPhrase.GetWord(pos);
+	out.PrependWord(word);
+
+	--numWords;
+    if (numWords <= 0) {
+      return;
+    }
+  }
+
+  if (m_prevHypo) {
+    m_prevHypo->GetLastWords(numWords, out);
+  }
 }
 
 }

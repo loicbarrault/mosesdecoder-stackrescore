@@ -348,6 +348,8 @@ void SetPrevHypo(const Hypothesis* newPrev);
   const TranslationOption &GetTranslationOption() const {
     return *m_transOpt;
   }
+
+  void GetLastWords(int numWord, Phrase &out) const;
 };
 
 std::ostream& operator<<(std::ostream& out, const Hypothesis& hypothesis);
