@@ -1018,7 +1018,7 @@ void Manager::ProcessRescore()
 				     {
 										
 										VERBOSE(2,endl<<endl<<" Hypo ID "<<(*iterHypo)->GetId()<<" Prev : "<<(*iterHypo)->GetPrevHypo()->GetId()<< " Trans : "<<(*iterHypo)->GetCurrTargetPhrase().GetStringRep(outputFactorOrder)<<endl );	
-										ScoreComponentCollection &hyp_scoreBreakdown     = (*iterHypo)->GetScoreBreakdownAddr();      // Get Hypothesis breakdown  *
+										ScoreComponentCollection &hyp_scoreBreakdown     = (*iterHypo)->GetScoreBreakdownAddr();      // Get Hypothesis Scorebreakdown
 										std::valarray<float > tstBscore = (*iterHypo)->GetCurrentScoreBreakdown().getCoreFeatures();
 										VERBOSE(2," "<<endl);
 										VERBOSE(2," Current BreakDW Scores       : ");
@@ -1041,7 +1041,7 @@ void Manager::ProcessRescore()
  	
 										hyp_scoreBreakdown.MinusEquals((*iterHypo)->GetPrevHypo()->GetScoreBreakdown() );          		// minus the actual previous BreakDown
 										
-										(*iterHypo)->SetPrevHypo( (*iterHypo)->GetPrevHypo()->GetWinningHypo() ); // change the previous to the winner	
+										(*iterHypo)->SetPrevHypo( (*iterHypo)->GetPrevHypo()->GetWinningHypo() ); // change the previous to the winner
 										VERBOSE(2," Plus  this       ( "<<(*iterHypo)->GetPrevHypo()->GetId()<<" )   : "); tstBscore = (*iterHypo)->GetPrevHypo()->GetScoreBreakdown().getCoreFeatures();	
 										for(size_t i =0;i<tstBscore.size();i++)
                                   VERBOSE(2,tstBscore[i]<<" ");
@@ -1068,7 +1068,7 @@ void Manager::ProcessRescore()
 																	{
 																				Hypothesis *arc = const_cast<Hypothesis*>(*iterArc);
 																				VERBOSE(2,"\t Arc ID "<< arc->GetId()<<" Prev : "<<arc->GetPrevHypo()->GetId()<<" Trans : "<<arc->GetCurrTargetPhrase().GetStringRep(outputFactorOrder)<<endl);
-																				ScoreComponentCollection &arc_scoreBreakdown = arc->GetScoreBreakdownAddr();//GetCurrScoreBreakdownAddr();// arc breakdown *
+																				ScoreComponentCollection &arc_scoreBreakdown = arc->GetScoreBreakdownAddr();// arc Scorebreakdown *
 																				std::valarray<float > arcBscore = arc->GetScoreBreakdown().getCoreFeatures();
 																				VERBOSE(2,"\t ARC Before BreakDW Scores      : ");
 																				for(size_t i =0;i<arcBscore.size();i++)
@@ -1082,14 +1082,14 @@ void Manager::ProcessRescore()
                                                 VERBOSE(2,arcBscore[i]<<" ");                                                                                                                             
                                         VERBOSE(2,endl);
 
-																				arc_scoreBreakdown.MinusEquals(arc->GetPrevHypo()->GetScoreBreakdown() ); //GetCurrentScoreBreakdown() ); // minus the actual previous
+																				arc_scoreBreakdown.MinusEquals(arc->GetPrevHypo()->GetScoreBreakdown() );  // minus the actual previous
 																				arc->SetPrevHypo( arc->GetPrevHypo()->GetWinningHypo() ); // change the previous to the winner 
 																				arcBscore = arc->GetPrevHypo()->GetScoreBreakdown().getCoreFeatures();
 																				VERBOSE(2,"\t Plus  this   ( "<< arc->GetPrevHypo()->GetId()<<" )        : ");
 																				for(size_t i =0;i<arcBscore.size();i++)                                                                                                                           
                                                 VERBOSE(2,arcBscore[i]<<" ");                                                                                                                             
                                         VERBOSE(2,endl);
-																				arc_scoreBreakdown.PlusEquals( arc->GetPrevHypo()->GetScoreBreakdown());// GetCurrentScoreBreakdown());//GetScoreBreakdown()); //Add the new previous
+																				arc_scoreBreakdown.PlusEquals( arc->GetPrevHypo()->GetScoreBreakdown()); //Add the new previous
 																				arc->GetScoreBreakdownAddr().CoreAssign(arc_scoreBreakdown); // Assign the score BreakDown to this arc *
 																				arcBscore = arc->GetScoreBreakdown().getCoreFeatures();			
 																				VERBOSE(2,"\t ARC After ADD BDW Scores       : ");
@@ -1100,14 +1100,14 @@ void Manager::ProcessRescore()
 																				
 																				VERBOSE(2,"\t CSLM SCORE  :  "<< arc->GetCSLMScore()<<endl);
 																				VERBOSE(2,"\t Total Score :  "<< arc->GetTotalScore()<< " + " << arc->GetCSLMScore() * StaticData::Instance().GetLMRescoringWeight()<< " =  " );	
-																				UpdateHypoTotalScore(arc); // update arc Score (aka add cslm weighted score )																				
+																				UpdateHypoTotalScore(arc); // update arc Score (aka add cslm weighted score to TotalScore)																				
 																				VERBOSE(2,arc->GetTotalScore()<<endl<<endl);
 																				if(arc->GetTotalScore() > NewHypoWinner->GetTotalScore() )
 																						 NewHypoWinner = arc;					
 							 										}
 															VERBOSE(2,endl<<" ------------------ recombine END ----------------- "<<endl<<endl);	
 														}
-										 if( (*iterHypo)->GetId() != NewHypoWinner->GetId()  )
+										 if( (*iterHypo)->GetId() != NewHypoWinner->GetId()  ) // If there is a recombined hypothesis better then it's Winning Hypo -> Switch 
 											{
 														VERBOSE(2," Winning change : from "<< (*iterHypo)->GetId() <<" To "<<NewHypoWinner->GetId()<<endl );
 														NewHypoWinner->AddArc(*iterHypo);
@@ -1174,16 +1174,11 @@ void Manager::UpdateHypoTotalScore( Hypothesis* hypo )
 {
 
 			 float 	TotalScore = hypo->GetScoreBreakdown().InnerProduct(StaticData::Instance().GetAllWeights());
-				      //TotalScore += hypo->GetfutureScore();
 							
-							//if(hypo->GetPrevHypo())
-							//			TotalScore += hypo->GetPrevHypo()->GetTotalScore() - hypo->GetPrevHypo()->GetfutureScore();
 									
 			TotalScore += hypo->GetCSLMScore() * StaticData::Instance().GetLMRescoringWeight(); // BIG/CSLM weighted Score
 
-			 hypo->SetTotalScore(TotalScore);//hypo->GetTotalScore() + (hypo->GetCSLMScore() * StaticData::Instance().GetLMRescoringWeight()) );
-
-
+			 hypo->SetTotalScore(TotalScore);// Set the TotalScore of hyp
 
 }
 
